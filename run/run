@@ -1,0 +1,287 @@
+#!/bin/bash
+echo -e "\e[37;42m@--------------------------------------------------------------------------------------@\e[0m"
+echo -e "\e[37;42m|          T A L O N  -  A U T O S U B M I S S I O N  -  R U N S C R I P T            |\e[0m"
+echo -e "\e[37;42m@--------------------------------------------------------------------------------------@\e[0m" 
+echo -e '\E[32m'"                                                                          ctrl+c to quit "
+tput sgr0
+### USAGE STATEMENT ###
+usage ()
+{
+	echo "
+##	This RUN script prompts the user for variables to send to the jobs script templete
+##	This script can be run in 3 ways
+##	1.) Interactively menu driven by using simply the command \"run\"
+##      2.) With command-line options using following switches:
+
+	-h      Show this message
+	OPTIONS:
+	-p [program] 	software program name
+	-i [input]	input filename
+	-q [QOS] 	QOS (debug, general, large)
+	-c [cores]	# computing cores (cpus)
+	-n [nodes]	# of nodes
+	-t [nodetype]   Type of node (r420, c6320, r720, r730}
+	-m [memory]	min memory (GB)
+	-e [email] 	email for notifications from queue (defaults to internal mail: $USER@hpc-02)
+	-f [files] 	auxilliary list of files in \" \"
+        -j [.job]       absolute location of user .job script
+	
+	Example: run -p matlab -q general -c 16 -i diffeq.in -f \"list.1 list.2 list.3\"
+	"
+
+}
+
+function contains() {
+    local n=$#
+    local value=${!n}
+    for ((i=1;i < $#;i++)) {
+        if [ "${!i}" == "${value}" ]; then
+            echo "y"
+            return 0
+        fi
+    }
+    return 1
+}
+
+### PARSING THE COMMAND LINE FOR OPTIONS ###
+while getopts ":p:i:q:c:n:m:e:f:j:s:h" options ; do
+	case $options in 
+		h ) usage; exit ;;
+		p ) prgname=$OPTARG ; opts=true ;;
+		i ) input_var=$OPTARG ; opts=true ;;
+		q ) queue=$OPTARG ; opts=true ;;
+		c ) cores=$OPTARG ; opts=true ;; 
+		n ) nodes=$OPTARG ; opts=true ;;
+		m ) jobmem=$OPTARG ; opts=true ;;
+		e ) email=$OPTARG ; opts=true ;;
+		f ) extrafiles=$OPTARG ; opts=true ;;
+                j ) jobscpt=$OPTARG ; opts=true ;;
+		t ) nodetype=$OPTARG ; opts=true ;;
+		: ) echo "-$OPTARG requires an argument"; usage; exit ;;
+		? ) echo "-$OPTARG is not an option"; usage ; exit;;
+	esac
+done
+
+if [ "$#" -eq "0" ]; then opts=false ; fi
+
+#if [ "$opts" != true ] ; then
+#	echo "Please use command-line options to run the submission script"; usage ; exit
+#fi
+
+###  SETTING THE PROGRAM TO RUN  ###
+	RUN_PATH="`dirname \"$0\"`"
+#	prglist=`awk '{ORS=" ";print $0}' /cm/shared/talon3/program.lst`
+	prglist=`ls $RUN_PATH/run*job | rev | cut -d '/' -f1 | rev | awk -F 'run' '{print $2}' | awk -F '.job' '{print $1}' | awk '{ORS=" ";print $0}'`
+	IFS=', ' read -r -a Aprglist <<< "$prglist"
+	if [ "$opts" == "false" ]; then
+		read -p "  1.)     Enter program name [$prglist]: " prgname 
+	elif [ "$opts" == "true" ] && [ -z "$prgname" ]; then
+		read -p "  1.)     Enter program name [$prglist]: " prgname 
+	fi
+	until [ "$(contains "${Aprglist[@]}" "$prgname")" == "y" ] ; do
+		echo -e '\E[31m'"Err:  Program \"$prgname\" does not exist"
+		tput sgr0
+		read -p "  1.)     Enter program name [$prglist]: " prgname 
+	done
+	## Check for loaded module ##
+	module_chk=`echo $LOADEDMODULES | grep -c $prgname`
+	prg_version=`echo $LOADEDMODULES | awk 'BEGIN{RS=":"}{print $1}' | grep -m 1 $prgname`
+	if [ $module_chk -eq 0 ] ; then 
+		echo -e '\E[31m'"ERROR: No module loaded for: $prgname"
+		echo -e '\E[31m'"ERROR: See http://hpc.unt.edu/env-module"
+		tput sgr0
+		exit
+	fi
+	echo    "  Program set to: 	$prg_version "
+###  SETTING THE FILENAME AND FILETYPE  ###
+# This sed command produces filenames with no extenstion
+get_filename ()
+{
+echo $1 | sed 's/\(.*\)\.[^\.]*/\1/'
+}
+# This sed command produces the filetype from the characters after the last "."
+get_filetype ()
+{
+echo $1 | sed 's/.*\.\([^\.]*\)/\1/'
+}
+	if [ "$opts" == "false" ]; then
+		read -p '  2.)     Enter input file: ' input_var
+	elif [ "$opts" == "true" ] && [ -z "$input_var" ]; then
+		read -p '  2.)     Enter input file: ' input_var
+	fi
+	until [[ -e $input_var ]]; do
+		echo -e '\E[31m'"Err:  File \"$input_var\" does not exist"
+		tput sgr0
+		read -p '  2.)     Enter input file: ' input_var
+	done	
+	filename=`get_filename $input_var`
+	filetype=`get_filetype $input_var`
+	echo    "  Filename set to: 	$filename"
+	echo    "  Filetype set to: 	$filetype"
+
+###  SETTING THE CURRENT WORKING DIRECTORY  ###
+	subdir=`pwd`
+	echo    "  JOB submitted from: 	$subdir"
+	SLURMOPT="--get-user-env"
+###  SETTING THE QOS  ###
+	qlist="debug general large unlimited"
+	if [ "$opts" == "false" ] ; then
+		read -p "  3.)     Enter QOS [$qlist]: " queue
+	elif [ "$opts" == "true" ] && [ -z "$queue" ] ; then
+		echo "  Please enter a vaild QOS with the -q option: [$qlist] "
+	fi
+	q_inlist=`for q in $qlist ; do echo $q | grep -xo $queue ; done`
+	IFS=', ' read -r -a Aq_inlist <<< "$q_inlist"
+	until [ "$(contains "${Aq_inlist[@]}" "$queue")" == "y" ] ; do
+		echo -e '\E[31m'"Err:  QOS \"$queue\" does not exist"
+		tput sgr0
+		read -p "  3.)     Enter QOS [$qlist]: " queue
+	done
+	echo    "  QOS set to: 	$queue" 
+	SLURMOPT="$SLURMOPT -p public --qos $queue"
+###  SETTING # OF CORES/NODES FOR PARALLEL JOBS  ###
+	cluster=`hostname`
+	if [ "$opts" == "false" ] ; then
+		read -p '  4.)     Enter # of TOTAL cores : ' cores
+	        until [[ $cores =~ ^[0-9]+$ ]] ; do
+	              read -p "  4.)     Please Enter # cores : " cores
+	        done
+	elif [ "$opts" == "true" ] && [ -z "$cores" ]; then
+		echo "Please enter number of cores with the -p option" ; usage ;exit
+	fi
+        if [ "$opts" == "false" ] ; then
+                read -p '  5.)     Enter # of TOTAL Compute Nodes : ' nodes
+                until [[ $cores =~ ^[0-9]+$ ]] ; do
+                      read -p "  4.)     Please Enter # cores : " nodes
+                done
+        elif [ "$opts" == "true" ] && [ -z "$nodes" ]; then
+                echo "Please enter number of cores with the -p option" ; usage ;exit
+        fi
+
+	ntype_inlist="r420 c6320 r720 r730"
+	IFS=', ' read -r -a Antype_inlist <<< "$ntype_inlist"
+	if [ "$opts" == "false" ] ; then
+		read -p "  5.)     Enter type of node: [$ntype_inlist] " nodetype
+	fi
+	until [[ "$(contains "${Antype_inlist[@]}" "$nodetype")" == "y" ]] ; do
+		echo -e '\E[31m'"Err:  Node Type \"$nodetype\" does not exist"
+		tput sgr0
+		read -p "  5.)     Enter type of node: [$ntype_inlist] " nodetype
+	done
+
+	if [ "$queue" == "general" ]; then
+                echo "  # cores set to:       $cores"
+		nodes=$nodes
+		nppn=$((cores/nodes))
+		SLURMOPT="$SLURMOPT  -n $cores -N $nodes --ntasks-per-node $nppn"
+#		SLURMOPT="$SLURMOPT  --ntasks=$cores --ntasks-per-node=$nppn"
+	fi
+        if [ "$queue" == "debug" ]; then
+                echo "  # cores set to:       $cores"
+                nodes=$nodes
+                nppn=$((cores/nodes))
+                SLURMOPT="$SLURMOPT  -n $cores -N $nodes --ntasks-per-node $nppn"
+#               SLURMOPT="$SLURMOPT  --ntasks=$cores --ntasks-per-node=$nppn"
+        fi
+
+	if [ "$queue" == "large" ] || [ "$queue" == "unlimited" ]; then
+				nppn=$((cores/nodes))
+		echo "  # cores set to:       $cores"
+		echo "  # nodes set to:       $nodes"
+		echo "  # cores/node  :       $nppn"
+		SLURMOPT="$SLURMOPT --exclusive  -n $cores -N $nodes --ntasks-per-node $nppn"
+#		SLURMOPT="$SLURMOPT  --ntasks=$cores --ntasks-per-node=$nppn"
+	fi
+	if [ "$prgname" == "gaussian" ]; then
+		g09nppn=`grep -i -m 1 "nproc" ${filename}.${filetype} | cut -d "=" -f2`
+		gaussver=`echo $prg_version | grep "16"`
+		if [ ! -z "$gaussver" ] ; then
+			gaussver2=`echo g16`
+		else
+			gaussver2=`echo g09`
+		fi 
+		if [ -z "$g09nppn" ] ; then
+			echo -e '\E[31m'"ERROR: Your g09 input does not have '%nproc=' set but you have chosen $nppn cores in this run script"
+			echo -e '\E[31m'"ERROR: Please fix your input with %nproc=$cores and resubmit "
+			tput sgr0
+			sleep 2
+			exit
+		elif [ "$g09nppn" -ne "$cores" ] ; then
+			echo -e '\E[31m'"ERROR: Your g09 input has %nproc=$g09nppn but you have chosen $cores cores in this run script"
+			echo -e '\E[31m'"ERROR: Please fix your input and resubmit "
+			sleep 2
+			tput sgr0
+			exit
+		elif [ "$cores" -gt "28" ] ; then
+		        echo -e '\E[31m'"ERROR: Your run command has $cores but gaussian is not set up for parallel jobs across multiple node"
+			echo -e '\E[31m'"ERROR: Please fix and resubmit "
+                        sleep 2
+                        tput sgr0
+                        exit
+                fi
+	fi
+#	if [ "$queue" == "large" ] ; then
+#		SLURMOPT="$SLURMOPT  --exclusive"
+#	fi
+###  SETTING UP EMAIL NOTIFICATION  ###
+	if [ "$#" -eq "0" ] ; then
+		read -p "  5.)     Enter email address for notification : " email
+	echo "  Email set to:		$email"
+	fi
+  	if [ "$email" != "" ] ; then 
+  		SLURMOPT="$SLURMOPT --mail-user=$email"
+  	fi
+
+###  SETTING THE EXTRAFILES  ###
+	for i in `seq ${#files[@]}` ; do
+		j=$((i-1))
+		until [[ -e ${files[$j]} ]]; do
+			echo -e '\E[31m'"Err: extrafile[$j] \"${files[$j]}\" does not exist"
+			tput sgr0
+			read -p '  6.)     Enter single file: ' file
+			echo    "  ---> Replacing \"${files[$j]}\" with \"$file\""
+			files[$j]=$file
+     		done	
+	done
+	echo    "  Extrafiles that will be copied to the execution nodes are:"
+	echo    "  $extrafiles "
+	echo " "
+###  SETTING MEMORY REQUIREMENTS  ###
+	if [ "$queue" != "large" ] && [ -n "$jobmem" ] ; then
+		echo -e '\E[31m'"For the queue: $queue, you cannot request memory "
+		echo -e '\E[31m'"ERROR: Please remove memory limits in this run script " ; exit
+	fi
+	if [ -n "$jobmem" ] ; then
+		SLURMOPT="$SLURMOPT --mem=${jobmem}G"
+	fi
+
+###  USER JOB SCRIPT
+        if [ -n "$jobscpt" ]; then
+                until [[ -e ${jobscpt} ]]; do
+                        echo -e '\E[31m'"Err: ${jobscpt}  does not exist"
+                        read -p '        Enter location of .job script ' jobscptn
+                        echo   "  ---> Replacing ${jobscpt} with ${jobscptn} "
+                        jobscpt=$jobscptn
+                done
+                echo   "Using the job script ${jobscpt}"
+        fi
+
+
+
+###  SUBMITTING THE JOB  ###
+# The below variables are exported through SGE via the "-V" as environment variables to the execution nodes
+export gaussver2 prgname filename filetype subdir queue extrafiles nodes nppn cores jobmem 
+## general submittion for other codes ##
+if [ -n "$jobscpt" ]; then
+        cp $jobscpt $subdir/$filename.job
+else 
+	RUN_PATH="`dirname \"$0\"`"
+	cp $RUN_PATH/run${prgname}.job $subdir/$filename.job
+
+fi
+echo -e "\e[37;42m--> Submitting job with command: sbatch $SLURMOPT ${filename}.job \e[0m"
+tput sgr0
+sbatch $SLURMOPT ${filename}.job 
+sleep 1
+echo " "
+squeue -u $USER

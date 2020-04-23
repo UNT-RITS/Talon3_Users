@@ -1,0 +1,80 @@
+#!/bin/bash
+##
+##Charlie Peterson 1/23/2017
+##Script to make the MOTD on Talon3
+
+c32tot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c32 | grep public | wc -l`
+c64tot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c64 | grep public | wc -l`
+c512tot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c512 | grep public | wc -l`
+computetot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep compute | grep public | wc -l`
+gputot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep gpu | grep public | wc -l`
+
+c32idle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c32 | grep public | grep idle | wc -l`
+c64idle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c64 | grep public | grep idle | wc -l`
+c512idle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c512 | grep public | grep idle | wc -l`
+computeidle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep compute | grep public | grep idle | wc -l`
+gpuidle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep gpu | grep public | grep idle | wc -l`
+
+c32mix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c32 | grep public | grep mix | awk '{print $1}'`
+c64mix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c64 | grep public | grep mix | awk '{print $1}'`
+c512mix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c512 | grep public | grep mix | awk '{print $1}'`
+computemix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep compute | grep public | grep mix | awk '{print $1}'`
+gpumix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep gpu | grep public | grep mix | awk '{print $1}'`
+
+c32cpu=`echo "$c32idle * 16" | bc`
+for i in $c32mix ; do
+x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+y=`echo "16-$x" | bc`
+c32cpu=`echo "$c32cpu + $y" |bc`
+done
+
+c64cpu=`echo "$c64idle * 16" | bc`
+for i in $c64mix ; do
+x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+y=`echo "16-$x" | bc`
+c64cpu=`echo "$c64cpu + $y" |bc`
+done
+
+c512cpu=`echo "$c512idle * 32" | bc`
+for i in $c512mix ; do
+x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+y=`echo "32-$x" | bc`
+c512cpu=`echo "$c512cpu + $y" |bc`
+done
+
+computecpu=`echo "$computeidle * 28" | bc`
+for i in $computemix ; do
+x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+y=`echo "28-$x" | bc`
+computecpu=`echo "$computecpu + $y" |bc`
+done
+
+gpucpu=`echo "$gpuidle * 28" | bc`
+for i in $gpumix ; do
+x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+y=`echo "28-$x" | bc`
+gpucpu=`echo "$gpucpu + $y" |bc`
+done
+
+
+r420percore=`echo "(100-(($c32tot + $c64tot) *16 - ($c32cpu + $c64cpu)) / (($c32tot + $c64tot) *16) *100)" | bc -l`
+r720percore=`echo "(100-($c512tot * 32 - $c512cpu ) / ($c512tot *32) *100)" | bc -l`
+c6320percore=`echo "(100-($computetot * 28 - $computecpu ) / ($computetot *28) *100)" | bc -l`
+r730percore=`echo "(100-($gputot * 28 - $gpucpu ) / ($gputot *28) *100)" | bc -l`
+
+r420pernode=`echo "(100-(($c32tot + $c64tot) - ($c32idle + $c64idle)) / (($c32tot + $c64tot)) *100 )" | bc -l`
+r720pernode=`echo "(100-($c512tot - $c512idle ) / $c512tot * 100) " | bc -l`
+c6320pernode=`echo "(100-($computetot - $computeidle ) / $computetot * 100)" | bc -l`
+r730pernode=`echo "(100-($gputot - $gpuidle ) / $gputot * 100) " | bc -l`
+
+#Print results
+printf "         +-- Compute Node Availability --+\n"
+printf "                        %%free  %%free      \n"
+printf "                        cores   nodes     \n"
+printf "                       ------- -------    \n"
+printf "           c6320     :  %.3g    %.3g      \n" $c6320percore $c6320pernode
+printf "           r420      :  %.3g    %.3g      \n" $r420percore $r420pernode
+printf "           r720      :  %.3g    %.3g      \n" $r720percore $r720pernode 
+printf "           r730(GPU) :  %.3g    %.3g      \n" $r730percore $r730pernode
+printf "         +-------------------------------+\n"
+
