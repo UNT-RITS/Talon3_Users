@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# Example of a SLURM job script for Talon3
+# Running simple linear algebra exmaple in Python
+# Using Talon3 Python 3.6.5
+#
+# Job Name: Sample_Job
+# Number of cores: 1
+# Number of nodes: 1
+# Compute Node Type: R420
+# QOS: general
+# Run time: 12 hrs
+#SBATCH -J Sample_Job
+#SBATCH -o Sample_job.o%j
+#SBATCH -p public
+#SBATCH --qos general
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -t 12:00:00
+#SBATCH -C r420
+
+# Loading Python module version 3.6.5 
+module load python/3.6.5
+
+#Running python code
+#Input file: LinAlgTest.py
+#Output file: LinAlgTest.out
+python LinAlgTest.py > LinAlgTest.out
+
