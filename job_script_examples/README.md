@@ -1,3 +1,5 @@
+# Talon3 Job Script Examples
+
 This contains job script examples for running certain job on Talon3
 
 Examples:
@@ -7,7 +9,7 @@ Examples:
 	- java
 	- Mathematica
 	- MATLAB
-2. Molecular code:
+2. Molecular:
 	- Gaussian
 	- NWChem
 	- Quantum Espresso

@@ -1,6 +1,6 @@
 #!/bin/bash
 echo -e "\e[37;42m@--------------------------------------------------------------------------------------@\e[0m"
-echo -e "\e[37;42m|          T A L O N  -  A U T O S U B M I S S I O N  -  R U N S C R I P T            |\e[0m"
+echo -e "\e[37;42m|          T A L O N 3  -  A U T O S U B M I S S I O N  -  R U N S C R I P T            |\e[0m"
 echo -e "\e[37;42m@--------------------------------------------------------------------------------------@\e[0m" 
 echo -e '\E[32m'"                                                                          ctrl+c to quit "
 tput sgr0
@@ -22,7 +22,7 @@ usage ()
 	-n [nodes]	# of nodes
 	-t [nodetype]   Type of node (r420, c6320, r720, r730}
 	-m [memory]	min memory (GB)
-	-e [email] 	email for notifications from queue (defaults to internal mail: $USER@hpc-02)
+	-e [email] 	email for JOB notifications
 	-f [files] 	auxilliary list of files in \" \"
         -j [.job]       absolute location of user .job script
 	
