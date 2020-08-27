@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# Example of a SLURM job script for Talon3
+#
+# Job Name: Gaussian_Job
+# Number of cores: 1
+# Number of nodes: 1
+# Compute Node Type: R420
+# QOS: general
+# Run time: 12 hrs
+#SBATCH -J Gaussian_Job
+#SBATCH -o Gaussian_job.o%j
+#SBATCH -p preproduction
+#SBATCH --qos general
+#SBATCH -N 1
+#SBATCH -n 16
+#SBATCH -t 12:00:00
+
+# Loading Python module version 3.6.5 
+module load gaussian/g09-revD
+
+g09 CO.com 
+

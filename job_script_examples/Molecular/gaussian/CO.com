@@ -1,4 +1,4 @@
-%chk = CO.chk
+%chk =CO.chk
 %mem = 2GB
 %nproc = 16
 #hf/cc-pvdz

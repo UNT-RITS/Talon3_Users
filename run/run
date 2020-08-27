@@ -1,6 +1,6 @@
 #!/bin/bash
 echo -e "\e[37;42m@--------------------------------------------------------------------------------------@\e[0m"
-echo -e "\e[37;42m|          T A L O N 3  -  A U T O S U B M I S S I O N  -  R U N S C R I P T            |\e[0m"
+echo -e "\e[37;42m|          T A L O N  -  A U T O S U B M I S S I O N  -  R U N S C R I P T            |\e[0m"
 echo -e "\e[37;42m@--------------------------------------------------------------------------------------@\e[0m" 
 echo -e '\E[32m'"                                                                          ctrl+c to quit "
 tput sgr0
@@ -8,6 +8,7 @@ tput sgr0
 usage ()
 {
 	echo "
+##	Last Update: 2.03.17
 ##	This RUN script prompts the user for variables to send to the jobs script templete
 ##	This script can be run in 3 ways
 ##	1.) Interactively menu driven by using simply the command \"run\"
@@ -17,34 +18,21 @@ usage ()
 	OPTIONS:
 	-p [program] 	software program name
 	-i [input]	input filename
+	-a [pArtition]  partiton [production,preproduction,gpu,bigmem]
 	-q [QOS] 	QOS (debug, general, large)
 	-c [cores]	# computing cores (cpus)
 	-n [nodes]	# of nodes
-	-t [nodetype]   Type of node (r420, c6320, r720, r730}
 	-m [memory]	min memory (GB)
-	-e [email] 	email for JOB notifications
+	-e [email] 	email for notifications from queue (defaults to internal mail: $USER@hpc-02)
 	-f [files] 	auxilliary list of files in \" \"
         -j [.job]       absolute location of user .job script
-	
+
 	Example: run -p matlab -q general -c 16 -i diffeq.in -f \"list.1 list.2 list.3\"
 	"
 
 }
-
-function contains() {
-    local n=$#
-    local value=${!n}
-    for ((i=1;i < $#;i++)) {
-        if [ "${!i}" == "${value}" ]; then
-            echo "y"
-            return 0
-        fi
-    }
-    return 1
-}
-
 ### PARSING THE COMMAND LINE FOR OPTIONS ###
-while getopts ":p:i:q:c:n:m:e:f:j:s:h" options ; do
+while getopts ":p:i:q:c:n:m:e:f:j:s:a:h" options ; do
 	case $options in 
 		h ) usage; exit ;;
 		p ) prgname=$OPTARG ; opts=true ;;
@@ -56,32 +44,31 @@ while getopts ":p:i:q:c:n:m:e:f:j:s:h" options ; do
 		e ) email=$OPTARG ; opts=true ;;
 		f ) extrafiles=$OPTARG ; opts=true ;;
                 j ) jobscpt=$OPTARG ; opts=true ;;
-		t ) nodetype=$OPTARG ; opts=true ;;
+		a ) partition=$OPTARG ; opts=true ;;
 		: ) echo "-$OPTARG requires an argument"; usage; exit ;;
 		? ) echo "-$OPTARG is not an option"; usage ; exit;;
 	esac
 done
 
-if [ "$#" -eq "0" ]; then opts=false ; fi
-
-#if [ "$opts" != true ] ; then
-#	echo "Please use command-line options to run the submission script"; usage ; exit
-#fi
+if [ "$opts" != true ] ; then
+	echo "Please use command-line options to run the submission script"; usage ; exit
+fi
 
 ###  SETTING THE PROGRAM TO RUN  ###
-	RUN_PATH="`dirname \"$0\"`"
-#	prglist=`awk '{ORS=" ";print $0}' /cm/shared/talon3/program.lst`
-	prglist=`ls $RUN_PATH/run*job | rev | cut -d '/' -f1 | rev | awk -F 'run' '{print $2}' | awk -F '.job' '{print $1}' | awk '{ORS=" ";print $0}'`
-	IFS=', ' read -r -a Aprglist <<< "$prglist"
-	if [ "$opts" == "false" ]; then
+	prglist=`awk '{ORS=" ";print $0}' /cm/shared/talon3/program.lst`
+	if [ "$#" -eq "0" ]; then
 		read -p "  1.)     Enter program name [$prglist]: " prgname 
+	elif [ "$opts" != "true" ] ; then
+	       	prgname=$1
 	elif [ "$opts" == "true" ] && [ -z "$prgname" ]; then
 		read -p "  1.)     Enter program name [$prglist]: " prgname 
 	fi
-	until [ "$(contains "${Aprglist[@]}" "$prgname")" == "y" ] ; do
+	prg_inlist=`grep -xo $prgname /cm/shared/talon3/program.lst`
+	until [ "$prgname" == "$prg_inlist" ] ; do
 		echo -e '\E[31m'"Err:  Program \"$prgname\" does not exist"
 		tput sgr0
 		read -p "  1.)     Enter program name [$prglist]: " prgname 
+		prg_inlist=`grep -xo $prgname /cm/shared/talon3/program.lst`
 	done
 	## Check for loaded module ##
 	module_chk=`echo $LOADEDMODULES | grep -c $prgname`
@@ -104,7 +91,7 @@ get_filetype ()
 {
 echo $1 | sed 's/.*\.\([^\.]*\)/\1/'
 }
-	if [ "$opts" == "false" ]; then
+	if [ "$#" -eq "0" ]; then
 		read -p '  2.)     Enter input file: ' input_var
 	elif [ "$opts" == "true" ] && [ -z "$input_var" ]; then
 		read -p '  2.)     Enter input file: ' input_var
@@ -125,49 +112,32 @@ echo $1 | sed 's/.*\.\([^\.]*\)/\1/'
 	SLURMOPT="--get-user-env"
 ###  SETTING THE QOS  ###
 	qlist="debug general large unlimited"
-	if [ "$opts" == "false" ] ; then
+	if [ "$#" -eq "0" ] ; then
 		read -p "  3.)     Enter QOS [$qlist]: " queue
 	elif [ "$opts" == "true" ] && [ -z "$queue" ] ; then
 		echo "  Please enter a vaild QOS with the -q option: [$qlist] "
 	fi
 	q_inlist=`for q in $qlist ; do echo $q | grep -xo $queue ; done`
-	IFS=', ' read -r -a Aq_inlist <<< "$q_inlist"
-	until [ "$(contains "${Aq_inlist[@]}" "$queue")" == "y" ] ; do
+	until [ "$queue" == "$q_inlist" ] ; do
 		echo -e '\E[31m'"Err:  QOS \"$queue\" does not exist"
 		tput sgr0
 		read -p "  3.)     Enter QOS [$qlist]: " queue
+		q_inlist=`for q in $qlist ; do echo $q | grep -xo $queue ; done`
+		if [ "$?" -ne "0" ] ; then echo -e "\e[31mExiting: No QOS specified\e[0m"; exit ; fi
 	done
 	echo    "  QOS set to: 	$queue" 
-	SLURMOPT="$SLURMOPT -p public --qos $queue"
+	SLURMOPT="$SLURMOPT -p $partition --qos $queue"
 ###  SETTING # OF CORES/NODES FOR PARALLEL JOBS  ###
 	cluster=`hostname`
-	if [ "$opts" == "false" ] ; then
-		read -p '  4.)     Enter # of TOTAL cores : ' cores
+	if [ "$#" -eq "0" ] ; then
+		read -p '  4.)     Enter # cores : ' cores
 	        until [[ $cores =~ ^[0-9]+$ ]] ; do
 	              read -p "  4.)     Please Enter # cores : " cores
 	        done
 	elif [ "$opts" == "true" ] && [ -z "$cores" ]; then
 		echo "Please enter number of cores with the -p option" ; usage ;exit
 	fi
-        if [ "$opts" == "false" ] ; then
-                read -p '  5.)     Enter # of TOTAL Compute Nodes : ' nodes
-                until [[ $cores =~ ^[0-9]+$ ]] ; do
-                      read -p "  4.)     Please Enter # cores : " nodes
-                done
-        elif [ "$opts" == "true" ] && [ -z "$nodes" ]; then
-                echo "Please enter number of cores with the -p option" ; usage ;exit
-        fi
 
-	ntype_inlist="r420 c6320 r720 r730"
-	IFS=', ' read -r -a Antype_inlist <<< "$ntype_inlist"
-	if [ "$opts" == "false" ] ; then
-		read -p "  5.)     Enter type of node: [$ntype_inlist] " nodetype
-	fi
-	until [[ "$(contains "${Antype_inlist[@]}" "$nodetype")" == "y" ]] ; do
-		echo -e '\E[31m'"Err:  Node Type \"$nodetype\" does not exist"
-		tput sgr0
-		read -p "  5.)     Enter type of node: [$ntype_inlist] " nodetype
-	done
 
 	if [ "$queue" == "general" ]; then
                 echo "  # cores set to:       $cores"
@@ -275,8 +245,7 @@ export gaussver2 prgname filename filetype subdir queue extrafiles nodes nppn co
 if [ -n "$jobscpt" ]; then
         cp $jobscpt $subdir/$filename.job
 else 
-	RUN_PATH="`dirname \"$0\"`"
-	cp $RUN_PATH/run${prgname}.job $subdir/$filename.job
+	cp /cm/shared/talon3/run${prgname}.job $subdir/$filename.job
 
 fi
 echo -e "\e[37;42m--> Submitting job with command: sbatch $SLURMOPT ${filename}.job \e[0m"

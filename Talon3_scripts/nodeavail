@@ -1,57 +1,56 @@
 #!/bin/bash
 ##
 ##Charlie Peterson 1/23/2017
-##Script to make the MOTD on Talon3
 
-c32tot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c32 | grep public | wc -l`
-c64tot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c64 | grep public | wc -l`
-c512tot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c512 | grep public | wc -l`
-computetot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep compute | grep public | wc -l`
-gputot=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep gpu | grep public | wc -l`
+c32tot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c32 | grep preproduction | wc -l`
+c64tot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c64 | grep preproduction | wc -l`
+c512tot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c512 | grep bigmem | wc -l`
+computetot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep compute | grep production | wc -l`
+gputot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep gpu | grep gpu | wc -l`
 
-c32idle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c32 | grep public | grep idle | wc -l`
-c64idle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c64 | grep public | grep idle | wc -l`
-c512idle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c512 | grep public | grep idle | wc -l`
-computeidle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep compute | grep public | grep idle | wc -l`
-gpuidle=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep gpu | grep public | grep idle | wc -l`
+c32idle=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c32 | grep preproduction | grep idle | wc -l`
+c64idle=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c64 | grep preproduction  | grep idle | wc -l`
+c512idle=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c512 | grep bigmem | grep idle | wc -l`
+computeidle=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep compute | grep production | grep idle | wc -l`
+gpuidle=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep gpu | grep gpu | grep idle | wc -l`
 
-c32mix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c32 | grep public | grep mix | awk '{print $1}'`
-c64mix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c64 | grep public | grep mix | awk '{print $1}'`
-c512mix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep c512 | grep public | grep mix | awk '{print $1}'`
-computemix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep compute | grep public | grep mix | awk '{print $1}'`
-gpumix=`/cm/shared/apps/slurm/16.05.8/bin/sinfo -lNe | grep gpu | grep public | grep mix | awk '{print $1}'`
+c32mix=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c32 | grep preproduction  | grep mix | awk '{print $1}'`
+c64mix=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c64 | grep preproduction  | grep mix | awk '{print $1}'`
+c512mix=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c512 | grep bigmem | grep mix | awk '{print $1}'`
+computemix=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep compute | grep production  | grep mix | awk '{print $1}'`
+gpumix=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep gpu | grep gpu | grep mix | awk '{print $1}'`
 
 c32cpu=`echo "$c32idle * 16" | bc`
 for i in $c32mix ; do
-x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+x=`/cm/shared/apps/slurm/17.11.12/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
 y=`echo "16-$x" | bc`
 c32cpu=`echo "$c32cpu + $y" |bc`
 done
 
 c64cpu=`echo "$c64idle * 16" | bc`
 for i in $c64mix ; do
-x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+x=`/cm/shared/apps/slurm/17.11.12/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
 y=`echo "16-$x" | bc`
 c64cpu=`echo "$c64cpu + $y" |bc`
 done
 
 c512cpu=`echo "$c512idle * 32" | bc`
 for i in $c512mix ; do
-x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+x=`/cm/shared/apps/slurm/17.11.12/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
 y=`echo "32-$x" | bc`
 c512cpu=`echo "$c512cpu + $y" |bc`
 done
 
 computecpu=`echo "$computeidle * 28" | bc`
 for i in $computemix ; do
-x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+x=`/cm/shared/apps/slurm/17.11.12/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
 y=`echo "28-$x" | bc`
 computecpu=`echo "$computecpu + $y" |bc`
 done
 
 gpucpu=`echo "$gpuidle * 28" | bc`
 for i in $gpumix ; do
-x=`/cm/shared/apps/slurm/16.05.8/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
+x=`/cm/shared/apps/slurm/17.11.12/bin/scontrol show node $i | grep CPUAlloc | awk '{print $1}' | cut -d '=' -f2`
 y=`echo "28-$x" | bc`
 gpucpu=`echo "$gpucpu + $y" |bc`
 done

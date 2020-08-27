@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH -C c6320
 
 # This is a Job Script for Running Gaussian 09
 ##  Variables exported from the run script  ##
