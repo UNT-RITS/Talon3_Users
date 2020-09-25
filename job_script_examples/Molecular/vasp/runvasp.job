@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Example of a SLURM job script for Talon3
+# VASP code
+#
+# Job Name: VASP_Job
+# Number of cores: 1
+# Number of nodes: 16
+# Compute Node Type: R420
+# QOS: general
+# Run time: 12 hrs
+#SBATCH -J VASP_Job
+#SBATCH -o VASP_job.o%j
+#SBATCH -p preproduction
+#SBATCH --qos general
+#SBATCH -N 1
+#SBATCH -n 16
+#SBATCH -t 12:00:00
+
+# Loading module
+module load vasp/5.4.4-vtst
+
+
+# Setting up scratch
+STORAGE_DIR="/storage/scratch2/$USER/${SLURM_JOB_ID}.${SLURM_JOB_NAME}"
+mkdir -pv $STORAGE_DIR
+cd $STORAGE_DIR
+cp $SLURM_SUBMIT_DIR/INCAR $STORAGE_DIR
+cp $SLURM_SUBMIT_DIR/POSCAR $STORAGE_DIR
+cp $SLURM_SUBMIT_DIR/POTCAR $STORAGE_DIR
+cp $SLURM_SUBMIT_DIR/KPOINTS $STORAGE_DIR
+
+# Running gaussian
+time vasp_std 
+
+# copying output files and removing scratch
+cp -a $STORAGE_DIR $SLURM_SUBMIT_DIR
+rm -rv $STORAGE_DIR
+
+

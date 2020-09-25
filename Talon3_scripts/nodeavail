@@ -1,6 +1,11 @@
 #!/bin/bash
 ##
-##Charlie Peterson 1/23/2017
+##Created: Charlie Peterson 1/23/2017
+##
+## Updated 08/2019 
+## fix for new pre/production partitions 
+##
+##
 
 c32tot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c32 | grep preproduction | wc -l`
 c64tot=`/cm/shared/apps/slurm/17.11.12/bin/sinfo -lNe | grep c64 | grep preproduction | wc -l`

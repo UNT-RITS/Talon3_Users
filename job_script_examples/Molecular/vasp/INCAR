@@ -1,0 +1,37 @@
+ ISPIN = 1
+ LSORBIT = .FALSE. 
+
+# Parallel Jobs options 
+ LPLANE = .TRUE.
+ NPAR = 8
+ NSIM = 1
+
+# Accuracy controls:
+ PREC = High
+ ENCUT = 299.325
+
+# Electronic loop controls:
+ ALGO = Fast    # VFast 
+ EDIFF = 1E-3
+ NELMIN = 2
+ NELM = 60
+ ISMEAR = 1      # 1st order Methfessel-Paxton method
+ SIGMA = 0.2
+
+# Relaxation control:
+ IBRION = 1    # RMM-DIIS
+ NSW = 50
+ POTIM = 0.1
+ ISIF = 2      # Ions 
+ ADDGRID = .TRUE.
+ ENAUG = 1
+ ISYM = 0
+ LREAL = Auto
+
+# Properties:
+ LCHARG = .TRUE.
+ LWAVE = .TRUE.
+ LELF = .TRUE.
+ LVTOT = .TRUE.
+ LVHAR = .TRUE.
+

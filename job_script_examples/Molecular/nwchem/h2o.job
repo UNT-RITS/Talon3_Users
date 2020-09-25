@@ -1,42 +1,37 @@
 #!/bin/bash
 #
 # Example of a SLURM job script for Talon3
-# Gaussian09 code
+# NWChem version 7
 #
-# Job Name: Gaussian_Job
+# Job Name: NWChem_Job
 # Number of cores: 1
-# Number of nodes: 16
-# Compute Node Type: R420
+# Number of nodes: 28
+# Compute Node Type: C6320
 # QOS: general
-# Run time: 12 hrs
-#SBATCH -J Gaussian_Job
-#SBATCH -o Gaussian_job.o%j
-#SBATCH -p preproduction
+#SBATCH -J NWChem_Job
+#SBATCH -o NWChem_job.o%j
+#SBATCH -p production
 #SBATCH --qos general
 #SBATCH -N 1
-#SBATCH -n 16
-#SBATCH -t 12:00:00
+#SBATCH -n 28
 
 # Loading module
-module load gaussian/g09-revD
+module load nwchem/7.0.0
 
 # Settting up job
-filename=CO.com
+filename=h2o.nw
 input=`echo $filename | sed 's/\(.*\)\.[^\.]*/\1/'`
 
 # Setting up scratch 
 STORAGE_DIR="/storage/scratch2/$USER/${SLURM_JOB_ID}.${input}"
 GAUSS_SCRDIR=$STORAGE_DIR
-export GAUSS_SCRDIR=$STORAGE_DIR
 mkdir -pv $STORAGE_DIR
 cd $STORAGE_DIR
 cp $SLURM_SUBMIT_DIR/${filename} $STORAGE_DIR
 
 # Running gaussian
-time g09 < ${input}.com > ${input}.out
+time nwchem < ${input}.nw > ${input}.out
 
 # copying output files and removing scratch
-rm $STORAGE_DIR/*.rwf
 cp -a $STORAGE_DIR $SLURM_SUBMIT_DIR
-rm -rv $GAUSS_SCRDIR
-  
+rm -rf $STORAGE_DIR 

@@ -1,27 +1,26 @@
 #!/bin/bash
 #
 # Example of a SLURM job script for Talon3
-# Gaussian09 code
+# Using Gaussian16 with GPUs
 #
-# Job Name: Gaussian_Job
-# Number of cores: 1
-# Number of nodes: 16
-# Compute Node Type: R420
-# QOS: general
-# Run time: 12 hrs
-#SBATCH -J Gaussian_Job
-#SBATCH -o Gaussian_job.o%j
-#SBATCH -p preproduction
-#SBATCH --qos general
+# Job Name: CO_gpu
+# Number of cores: 28
+# Number of GPU units: 2
+# Number of nodes: 1
+# Compute Node Type: GPU R730
+# 
+#SBATCH -J CO-gpu 
+#SBATCH -p gpu
+#SBATCH --gres=gpu:2
+#SBATCH -n 28
 #SBATCH -N 1
-#SBATCH -n 16
-#SBATCH -t 12:00:00
 
-# Loading module
-module load gaussian/g09-revD
+# loading modules
+module load gaussian/g16-RevA.03-avx2
+module load cuda/101/toolkit/10.1.243
 
 # Settting up job
-filename=CO.com
+filename=CO-gpu.com
 input=`echo $filename | sed 's/\(.*\)\.[^\.]*/\1/'`
 
 # Setting up scratch 
@@ -33,10 +32,11 @@ cd $STORAGE_DIR
 cp $SLURM_SUBMIT_DIR/${filename} $STORAGE_DIR
 
 # Running gaussian
-time g09 < ${input}.com > ${input}.out
+time g16 < ${input}.com > ${input}.out
 
 # copying output files and removing scratch
 rm $STORAGE_DIR/*.rwf
 cp -a $STORAGE_DIR $SLURM_SUBMIT_DIR
 rm -rv $GAUSS_SCRDIR
-  
+
+
