@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#SBATCH -o Rmpi.o%j
+#SBATCH -p bigmem
+#SBATCH --qos general
+#SBATCH -N 1
+#SBATCH -n 16
+
+module load R/4.0.2
+module load openmpi/gcc/1.10.6
+
+mpirun -n 1 --mca btl tcp,self R CMD BATCH --no-save  Rmpi.R Rmpi.out
+
+

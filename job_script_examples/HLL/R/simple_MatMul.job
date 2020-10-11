@@ -1,0 +1,21 @@
+#!/bin/bash
+##
+## Example of a SLURM job script for Talon3
+## A simple Matrix multiplication in R
+##
+## Job Name: simple_matMul
+## Compute Node Type: R420
+## QOS: general
+## number of cores: 1
+##
+#SBATCH -o simple_MatMul.o%j
+#SBATCH -p preproduction
+#SBATCH --qos general
+#SBATCH -N 1
+#SBATCH -n 1
+
+module load R/4.0.2
+
+R CMD BATCH --no-save simple_MatMul.R simple_matMul.out
+
+

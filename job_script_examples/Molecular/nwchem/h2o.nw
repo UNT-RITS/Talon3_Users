@@ -1,4 +1,6 @@
 start h2o
+echo
+
  title "Water in 6-31g basis set"
  
  geometry units au
@@ -7,16 +9,18 @@ start h2o
    H      0.00000000   -1.43042809   -1.10715266
  end
  basis
-   H library 6-31g
-   O library 6-31g
+   H library cc-pVQZ
+   O library cc-pVQZ
  end
 
 
-dft
-  xc b3lyp
-  mult 1
-  iterations 10000
+scf
 end
 
+mp2
+freeze core
+end
 
-task dft optimize
+task mp2 optimize
+
+
